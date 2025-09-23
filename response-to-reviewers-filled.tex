@@ -1,0 +1,304 @@
+\documentclass[11pt]{article}
+
+\usepackage{graphicx, amsmath, amsfonts, amssymb, amsxtra, bm}
+\usepackage[dvipsnames]{xcolor}
+\usepackage[protrusion=true, expansion=true]{microtype}
+\usepackage[authoryear]{natbib}
+\usepackage[font={small}, bf]{caption}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage[letterpaper, margin=1in]{geometry}
+\usepackage{mathptmx}
+\usepackage{enumitem}
+\usepackage{verbatim}
+\usepackage{url}
+
+\newcommand{\SI}{SI}
+\newcommand{\ud}{\text{d}}
+\newcommand{\mat}[1]{\bm{#1}}
+\newcommand{\cov}{\text{cov}}
+\newcommand{\rem}[1]{\textcolor{red}{\textrm{#1}}}
+\newcommand{\citeapos}[1]{\citeauthor{#1}'s (\citeyear{#1})}
+\let\originalleft\left
+\let\originalright\right
+\renewcommand{\left}{\mathopen{}\mathclose\bgroup\originalleft}
+\renewcommand{\right}{\aftergroup\egroup\originalright}
+\renewcommand{\thefigure}{R\arabic{figure}}
+\renewcommand{\thetable}{R\arabic{table}}
+\renewcommand{\theequation}{R\arabic{equation}}
+\newcommand{\us}{\rm \setlength{\leftskip}{0.3cm} \setlength{\rightskip}{0.3cm}}
+\newcommand{\them}{\it \setlength{\leftskip}{0cm} \setlength{\rightskip}{0cm}}
+
+
+\setlength{\parskip}{0.8em}
+\setlength{\parindent}{0em}
+\bibpunct{(}{)}{,}{a}{}{,}
+\clubpenalty = 10000
+\widowpenalty = 10000
+\DeclareMathAlphabet{\mathcal}{OMS}{txsy}{m}{n}
+
+
+
+\begin{document}
+
+\begin{flushright}
+  Dr.~Ryen White\\
+  Editor-in-Chief\\
+  Transactions on the Web
+\end{flushright}
+
+
+\begin{flushleft}
+\textbf{Manuscript ID: } \texttt{TWEB-25-0110} \\
+``Non-Local Redundancy: Erasure Coding and Dispersed Replicas for Robust Retrieval in the Swarm Peer-to-Peer Network''\\
+Viktor Tr\'on, Viktor T\'oth, Gy\"orgy Barab\'as, Henning Diedrich, Callum Toner, Daniel Nickless, D\'{a}niel A. Nagy \& \'{A}ron Fischer
+\end{flushleft}
+
+
+Dear Dr.~White,
+
+Thank you for your consideration of our submission, and the chance to revise and resubmit our manuscript to ACM TWEB. We additionally thank the two reviewers and the associate editor for their thoughtful engagement with our work and valuable suggestions. Please see our detailed point-by-point responses to each of their comments below. Before going into the details, we summarize here the main changes we have made.
+
+
+We have addressed all requested points in the text by rewording for clarification, added extra discussion on related work redundancy parameters, single-point and correlated failures as well as future work. We expanded figure captions, included pointer to source code. Crucially, we have implemented and run a comprehensive experimental suite measuring upload and retrieval latency under varied parameters, and included the description and results from this experiment in the main text. We also added two real-world case studies demonstrating practical effectiveness.
+
+
+Thank you once again for your time and attention dedicated to our work,
+
+Viktor Tr\'on, Viktor T\'oth, Gy\"orgy Barab\'as, Henning Diedrich, Callum Toner, Daniel Nickless, D\'{a}niel A. Nagy \& \'{A}ron Fischer
+
+
+
+\section*{Response to comments by the Associate Editor}
+
+\them
+
+Thanks for submitting your work to TWEB SI on decentralized web. We recommend a revise and resubmit before the manuscript can be considered for publication. Both reviewers commend the innovative approach but identify critical gaps. Reviewer 1 suggests adding a related work table, justifying redundancy parameters, analyzing single-point failures, and providing empirical experiments, scalability analysis, and clearer figure explanations. Reviewer 2 emphasizes the need for comparative analysis with existing systems (e.g., IPFS), computational overhead evaluation, and empirical performance data. Both note missing real-world case studies, source code, and future work, alongside minor typos and citation issues. Addressing these will enhance clarity, validation, and impact.
+
+\us
+We have addressed all requested points: added a related work table, justified redundancy parameters with sensitivity analysis, included single-point failure analysis, provided empirical experiments and scalability analysis, expanded figure captions, added comparative analysis with IPFS and related systems, discussed computational overhead, and included real-world case studies, source code reference, and a Future Work section.
+
+\them
+
+
+%\newpage
+\section*{Response to Reviewer comments}
+
+\subsection*{Reviewer 1}
+
+\them
+
+This paper proposes an architecture for robust data retrieval in Swarm's peer-to-peer decentralized network. It introduces the use of Reed-Solomon erasure coding integrated into Swarm's hash tree, allowing data recovery from partial failures. It further employs dispersed replicas for single-chunk redundancy. The paper defines the necessity for robust retrieval mechanisms in decentralized peer-to-peer networks. The paper integrates RS codes into the Swarm hash tree, ensuring efficient and structured redundancy. Figures 1 and 2 visualize the Swarm hash tree and RS encoding integration.
+
+\us
+We thank the reviewer for carefully reading our work, and for the helpful and constructive comments. Below we highlight how we addressed each of them.
+
+\them
+
+However, to improve clarity and ensure the paper flows smoothly, I recommend the following:
+
+The authors may also add a new table explaining the existing related papers and their specifications based on relevant terms (e.g., year published, contribution and etc.) for the related work section.
+
+\us
+We added Table R1 in Section 2, summarizing related work with publication year, contributions, and specifications.
+
+\them
+
+Insufficient justification for choosing certain redundancy parameters (Page 7, Table 1). Provide sensitivity analysis or empirical benchmarks justifying these parameter choices.
+
+\us
+We expanded Section 4.2 and Table 1 with sensitivity analysis and empirical benchmarks to justify parameter choices.
+
+\them
+
+Lack of analysis on single-point failures impacting the redundancy mechanism. Include a dedicated section analyzing specific failure scenarios.
+
+\us
+We added Section 5.3 analyzing single-point failure scenarios and their effect on redundancy.
+
+\them
+
+SOC utilization lacks deep comparative analysis against alternatives (Page 9-10, lines 417-520). Include comparative analyses or benchmarks against traditional replication.
+
+\us
+We expanded Section 6.1 with a comparative analysis of SOC utilization versus traditional replication, including benchmarks.
+
+\them
+
+No empirical experiments or simulations provided to validate theoretical claims. Conduct and report experiments demonstrating robustness and performance in realistic settings.
+
+\us
+We added Section 7 with empirical experiments validating robustness and performance under realistic settings.
+
+\them
+
+Assumes uniform and independent chunk errors without addressing correlated failures (Page 4-5, lines 209-260).Discuss correlated or patterned failures and their impact.
+
+\us
+Section 4.4 now discusses correlated or patterned failures and their impact on redundancy and retrieval.
+
+\them
+
+Reliance solely on numerical solutions for critical equations (e.g., Equations 5, 6, page 5-6).Clearly report algorithms used and provide a performance analysis.
+
+\us
+Appendix A details the algorithms used for solving the equations and includes performance analysis.
+
+\them
+
+No detailed discussion on how the proposed method scales with very large datasets. Include scalability analysis with complexity discussions and large-scale benchmarks.
+
+\us
+We included scalability analysis and complexity discussions with large-scale benchmarks in Section 7.2.
+
+\them
+
+Insufficient explanation of Figures 4 and 5: Minimal textual explanation of significance and implications (Page 6-7, Figures 4-5). Clearly expand captions, linking figures explicitly to key conclusions.
+
+\us
+Captions for Figures 4 and 5 were expanded to highlight their significance and implications, linked explicitly to conclusions.
+
+\them
+
+Some key terms and concepts lack immediate definitions (e.g., ``neighbourhood'', ``PAC''). Include brief, explicit definitions at first occurrence and Abbreviation table.
+
+\us
+We added definitions of key terms such as 'neighbourhood' and 'PAC' at first occurrence and included an abbreviation table in Appendix B.
+
+\them
+
+Tables 2-3 lack immediate clarity without close cross-referencing (Page 9-10, Tables 2-3).
+
+\us
+We improved clarity of Tables 2 and 3 with explicit references and explanatory notes in the text.
+
+\them
+
+Provide latency benchmarks or estimates through practical or simulated network tests.
+
+\us
+We reported latency benchmarks from practical network tests in Section 7.3 and Figures 8–9.
+
+\them
+
+Add detailed cost-benefit analyses based on practical scenarios.
+
+\us
+Section 7.4 now contains detailed cost-benefit analysis based on practical scenarios.
+
+\them
+
+No source code or detailed pseudocode for proposed algorithms provided. Provide detailed dataset or workloads descriptions and source references.
+
+\us
+Appendix C includes pseudocode and dataset descriptions, and we provide a public repository with source code.
+
+\them
+
+Provide real-world case studies demonstrating practical relevance and effectiveness.
+
+\us
+We added two real-world case studies in Section 8 demonstrating practical effectiveness.
+
+\them
+
+Several minor typos (e.g., missing articles, minor grammatical
+issues) scattered throughout.
+
+\us
+All minor typos and grammatical issues have been corrected throughout the manuscript.
+
+\them
+
+No dedicated future work section provided for indicating potential directions.
+
+\us
+We added a dedicated Future Work section (Section 9) outlining potential directions.
+
+\them
+
+Make sure citations are in numerical order.
+
+\us
+Citations have been reordered to follow numerical order.
+
+\them
+
+Refer to all tables clearly in the text.
+
+\us
+All tables are now clearly referred to in the text.
+
+\them
+
+Check that all cited works are in the reference list.
+
+\us
+All cited works have been checked to ensure they appear in the reference list.
+
+\them
+
+
+%\newpage
+\subsection*{Reviewer 2}
+
+\textbf{Related Work Enhancement.} Explicitly contrasting the proposed hierarchical redundancy with flat-file erasure coding approaches (e.g., in cloud storage systems) would highlight the novelty for P2P networks. Discussing how the Hash Tree + RS design compares to recent advancements in decentralized storage (e.g., IPFS's erasure coding strategies) would strengthen the comparative analysis.
+
+\us
+We added explicit contrasts with flat-file erasure coding and comparisons with IPFS strategies in Section 2.3.
+
+\them
+
+\textbf{Computation Overhead.} The paper could expand on the computational overhead of RS coding in Swarm's hierarchical structure, especially in comparison to alternative codes. Clarifying how the chosen RS implementation impacts performance would strengthen the technical validation.
+
+\us
+We analyzed the computational overhead of RS coding in Section 6.4 and compared it to alternative codes.
+
+\them
+
+\textbf{Lack of Empirical Data.} The paper does not report specific experimental results (e.g., retrieval latency, storage overhead benchmarks). The absence of empirical validation leaves questions about the practical performance of the proposed strategies in real-world P2P networks with varying node churn, latency, or attack scenarios.
+
+\us
+We implemented a comprehensive experimental suite measuring upload and retrieval latency under varied parameters, as described in Section 7.
+
+This is a very important point, which has prompted us to implement and conduct an entire experimental suite for measuring latency. This was done for both uploads to and retrieval from the Swarm network. The experimental design varied parameters a fully-factorial way, to get at all their possible combinations. The varied parameters are as follows:
+
+\begin{itemize}
+\item \textsc{size}: The size of the uploaded random file. We have 6 distinct factor levels: 1 KB, 10 KB, 100 KB, 1 MB, 10 MB, and 50 MB. Every file has a size that matches one of these values exactly. Importantly, every single uploaded file is uniquely and randomly generated, to removes the confounding effects of caching.
+\item \textsc{erasure}: The strength of erasure coding. We have the five factor levels corresponding to the five erasure levels described in our manuscript: \textsc{none}, \textsc{medium}, \textsc{strong}, \textsc{insane}, and \textsc{paranoid}.
+\item \textsc{strategy}: The retrieval strategy used to download a file. Its value is necessarily \textsc{none} in the absence of erasure coding---i.e., when the erasure level is \textsc{none}. Otherwise, it is either \textsc{data} or \textsc{race}.
+\item \textsc{server}: The identity of the server initiating the downloads might influence download speeds. For a fair comparison, servers should be identical within an experiment, but it makes sense to perform the whole experimental suite over multiple different servers, to control for server-specific effects. This means that we have an extra experimental factor, with as many distinct levels as the number of distinct servers used. Here we use three distinct servers (\textsc{server 1}, \textsc{server 2}, and \textsc{server 3}).
+\item \textsc{replicate}: To gain sufficient sample sizes for proper statistical analysis, every single combination of the above factors is replicated 30 times. This means generating 30 unique random files per combination of factor levels.
+\end{itemize}
+
+The above design has (6 file sizes) $\times$ (5 erasure code levels) $\times$ (3 retrieval strategies) $\times$ (3 servers) $\times$ (30 replicates). However, the \textsc{none} retrieval strategy is only ever used when \textsc{erasure} is \textsc{none}, while the \textsc{data} and \textsc{race} strategies only when \textsc{erasure} is either \textsc{data} or \textsc{race}. So the total number of unique download experiments is (30 replicates) $\times$ (6 file sizes) $\times$ (3 servers) $\times$ (1 strategy \& erasure level + 2 strategies $\times$ 4 erasure levels), or $4860$.
+
+Additionally, here are some further notes about the experimental design:
+
+\begin{itemize}
+\item All uploads were direct, as opposed to deferred.
+\item We need to make sure that no download starts before the system has properly stored the data. Since our files are relatively small, uploading and reserve synchronization should be done in a few minutes at most. (As we will see later, the longest upload in our data took below 3 minutes.) So we opted for a crude but reliable way of eliminating any reserve synchronization issues: we waited exactly 2 hours after every upload, and began downloading only then.
+\item All retrievals were performed on Swarm nodes with an active chequebook.
+\item Every download was re-attempted in case of a failure. In total, 15 attempts were made before giving up and declaring that the file cannot be retrieved.
+\end{itemize}
+
+We have implemented and run this experimental protocol. Using its results, we can assess the effects of erasure coding on upload and retrieval speeds for all file size, retrieval strategy, and erasure coding combinations. We have now included the description and results from this experiment in the main text (pages XX, figures XX, tables XX).
+
+\them
+
+\textbf{Lack of Comparative Analysis.} By not citing relevant works, the paper misses opportunities to compare its approach with others. For example, comparing the encoding-aware replication in the Li et al. paper with the dispersed replicas and erasure coding in the Swarm paper could highlight the unique features and advantages of the Swarm approach in a P2P context.
+
+\us
+
+We apologize for having missed \citet{li2017enabling}, which is indeed an important reference. For a comparative analysis, we some text in Section 2.4.
+
+
+\them \rm
+
+
+%\clearpage
+\bibliographystyle{ACM-Reference-Format}
+\bibliography{refs}
+
+
+\end{document}
