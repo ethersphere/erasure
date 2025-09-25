@@ -301,9 +301,9 @@ Section~\ref{sec:strategies} outlines multiple retrieval strategies tailored for
 
 \section{Introduction} \label{sec:error-correcting-codes}
 
-Error correcting codes are widely utilised in the context of data storage and transfer to ensure data integrity in the face of a system fault. Error-correction schemes define how to rearrange original data by adding redundancy to its representation before upload or transmission (\emph{encoding}) so that corrupted data can be corrected or missing content reconstructed upon retrieval or reception (\emph{decoding}). The different schemes are evaluated by quantifying their strength (\emph{tolerance} in terms of the highest rate of data corruption and loss they can recover from) as a function of their cost (\emph{overhead} in terms of the extra storage and computation they require).
+Error correcting codes are widely utilised in the context of data storage and transfer to ensure data integrity in the face of a system fault. Error-correction schemes define how to rearrange original data by adding redundancy to its representation before upload or transmission (\emph{encoding}) so that corrupted data can be corrected or missing content reconstructed upon retrieval or reception (\emph{decoding}). The different schemes are evaluated by quantifying their strength (\emph{tolerance} in terms of the highest rate of data corruption and loss they can recover from) as a function of their cost (\emph{overhead} in terms of the extra storage, bandwidth, and computation they require).
 
-In particular, \emph{erasure codes} define how to re-express data into a number of \textit{shards} and distribute them across the units of a disk array or nodes of a server cluster in such a way that the data remains fully recoverable given an arbitrary probability that any one or more physical carriers become faulty?
+In particular, \emph{erasure codes} define how to re-express data into a number of \textit{shards} and distribute them across the units of a disk array or nodes of a server cluster in such a way that the data remains fully recoverable given an arbitrary probability that any one or more physical carriers become faulty.
 For the specific context of Swarm's \emph{distributed immutable chunk store (DISC)}, the problem can be reformulated as follows: how to encode the data into chunks and distribute them across \textit{neighbourhoods}%
 %
 \footnote{Neighbourhoods are groups of nodes which are responsible for the same chunks.}
@@ -324,7 +324,7 @@ When using RS, it is customary to use \emph{systemic} encoding, which means that
 %
 \footnote{Both the encoding and the decoding of RS codes takes $O(mk)$ time (with $m$ data chunks and $k$ parities). In a distributed setup, where network i/o dominates, however, we found that the \emph{computational} overhead of RS (using \url{https://github.com/klauspost/reedsolomon}) is insignificant.}%
 $^,$%
-\footnote{\emph{Entanglement codes} \citep{estrada2018alpha, estrada2019building} require only minimal bandwidth overhead for local repairs, but their storage overhead is the multiples of $100\%$.}
+\footnote{\emph{Entanglement codes} \citep{estrada2018alpha, estrada2019building} require only minimal bandwidth overhead for local repairs, but their storage overhead is in the multiples of $100\%$.}
 %
 The decoder needs to retrieve $m$ chunks to recover a particular unavailable chunk.
 Hence, RS is ideal for scenarios where files need to be downloaded in full,%
@@ -339,64 +339,70 @@ Hence, RS is ideal for scenarios where files need to be downloaded in full,%
 \section{Erasure coding in the Swarm hash tree}
 \label{sec:erasure}
 
-Swarm represent files as a \emph{hash tree}, a Merkle tree \citep{merkle1980protocols} whose leaves are the consecutive segments of the input data stream. These segments are turned into chunks and are distributed among the Swarm nodes for storage. The consecutive chunk \emph{references} (either in the form of an address or an address and an encryption key) are then chained together to form intermediate chunks standing for the non-leaf nodes of the tree.%
+Swarm represents files as a \emph{hash tree}, a Merkle tree \citep{merkle1980protocols} whose leaves are the consecutive segments of the input data stream. These segments are turned into \emph{data chunks} and are distributed among the Swarm nodes for storage. The consecutive chunk \emph{references} (either in the form of an address or an address and an encryption key) are then chained together to form intermediate chunks standing for the non-leaf nodes of the tree.%
 %
 \footnote{They are marked by special bits in the metadata that is part of every chunk, the 8-byte \emph{span}, which holds the byte-length for normal data chunks.}
 %
-These so-called \emph{packed address chunks} (PACs) constitute the intermediate chunks of the tree. PACs can point to data chunks or other PACs. The top-most PAC is the \emph{root chunk}, its address is the \emph{root hash} of the file which can then be shared as the \emph{content-addressed reference} to the file within Swarm. 
+These so-called \emph{packed address chunks} (PACs) can point to data chunks or other PACs. The top-most PAC is the \emph{root chunk}, its address is the \emph{root hash} of the file which can then be shared as the \emph{content-addressed reference} to the file within Swarm. 
 A branching factor $b$ is chosen so that the references to its children fill up a PAC fully, i.e. $\mathit{size}(\mathit{reference})\cdot b = \mathit{size}(\mathit{chunk})$.
-For a reference size of 32 (the 256-bit root hash), the value of $b$ is thus 128 while for 64 (root hash plus decryption key), it is 64 (see figure~\ref{fig:Swarm-hash-split}).
+For a reference size of 32 (for 256-bit reference hashes), the value of $b$ is thus 128 while for 64 (root hash plus decryption key), it is 64 (see figure~\ref{fig:Swarm-hash-split}).
 
 
 \begin{figure}[!ht]
    \centering
    \input{figs/swarm-hash-split.tex}
+   \Description[]{}
    \caption[Swarm hash split]{The Swarm tree is the data structure encoding how a document is split into chunks.}
    \label{fig:Swarm-hash-split}
 \end{figure}
 
 On the right edge of the hash tree, the last chunk of each level may be shorter than 4K: in fact, unless the file is exactly $4\cdot b^n$ kilobytes long (for some non-negative integer $n$), there is always at least one \emph{incomplete chunk}.%
 %
-\footnote{It makes no sense to wrap a single chunk reference as a PAC. In these cases, the chunk carries over to the next level. Such \emph{``dangling'' chunks} will appear if and only if the file has a zero digit in its $b$-ary representation.}
+\footnote{It would not be efficient to wrap a single chunk reference as a PAC. Such ``dangling'' chunks are carried over to the next level up.}
 
-During file retrieval, a Swarm client starts from the root hash reference and retrieves the corresponding chunk. Interpreting the metadata as encoding the span of data subsumed under the chunk, it decides that the chunk is a PAC if the span exceeds the maximum chunk size.
-In case of a standard file download, all references packed within the PAC are followed and the referenced chunk data is retrieved.
+During file retrieval, a Swarm client starts from the root hash reference and retrieves the corresponding chunk. Interpreting the metadata as encoding the span of data subsumed under the chunk, it decides that the chunk is a PAC if the span exceeds the maximum chunk size of 4096.
+In case of a standard file download, all references packed within the PAC are followed and thus, all referenced data chunks are retrieved.
 
-PACs offer an organic and elegant way to achieve consistent redundancy within the Swarm hash tree.
-The input data for an instance of erasure coding is the chunk data of the children, with the equal-sized blocks corresponding to the chunk data of the consecutive references packed into the PAC. Instead of having each of the $b$ references packed represent children, only $m < b$ would, and the rest of the $k=b-m$ would encode RS parities (see Figure \ref{fig:Swarm-hash-erasure}).
+PACs offer an organic and elegant way to introduce consistent redundancy within the Swarm hash tree.
+The input data for an instance of erasure coding is the chunk data of the children, with RS' equal-sized blocks corresponding to the chunk data of the consecutive references packed into the PAC. Instead of having each of the $b$ references packed represent children, only $m < b$ would, and the rest of the $k=b-m$ would encode RS parities (see Figure \ref{fig:Swarm-hash-erasure}).
 
-
-The \emph{chunker} algorithm that incorporates PAC-scoped RS encoding would work as follows:
-\begin{enumerate}[noitemsep]
-\item Set the input to the actual data level and produce a sequence of chunks from the consecutive 4K segments of the data stream. Choose $m$ and $k$ such that $m+k=b$ is the branching factor (128 for unencrypted, and 64 for encrypted content).
-\item Read the input one chunk-length segment at a time. Count the chunks by incrementing a counter $i$.
-\item Repeat Step 2 until either $i = m$ or there is no more data left.
-\item Use the RS scheme on the last $i\leq m$ chunks to produce $k$ parity chunks resulting in a total of $n = i+k \leq b$ chunks.
-\item Concatenate the references of all these chunks to result in a packed address chunk (of size $h\cdot n$) on the level above. If this is the first chunk on that level, set the input to this level and spawn this same procedure from Step 2.
-\item When the input is consumed, signal the end of input to the next-level and quit the routine. If there is no higher level, record the single chunk as the root chunk and use its address as a reference to the entire file.
-\end{enumerate}
 
 \begin{figure}[!ht]
    \centering
    \resizebox{1\textwidth}{!}{
         \input{figs/swarm-hash-erasure.tex}
    }
+   \Description[]{}
    \caption[Swarm hash erasure]{A Swarm tree with $k=16$ extra parity chunks using $m=112$ out of $n=128$ RS encoding. Chunks $P_{0}$ through $P_{15}$ are parity data for chunks $H_0 $ through $H_{111}$ on every level of intermediate chunks. This pattern repeats itself all the way down the tree. }
    \label{fig:Swarm-hash-erasure}
 \end{figure}
+
+
+The \emph{chunker} algorithm that incorporates PAC-scoped RS encoding would work as follows:
+\begin{enumerate}[noitemsep]
+\item Set the input to the data level and produce a sequence of chunks from the consecutive 4K segments of the data stream. Choose $m$ and $k$ such that $m+k=b$ is the branching factor (128 for unencrypted, and 64 for encrypted content).
+\item Read the input one chunk-length segment at a time. Count the chunks by incrementing a counter $i$.
+\item Repeat Step 2 until either $i = m$ or there is no more data left.
+\item Use the RS scheme on the last $i\leq m$ chunks to produce $k$ parity chunks resulting in a total of $n = i+k \leq b$ chunks.
+\item Concatenate the references of all these chunks to obtain a PAC (of size $h\cdot n$) on the level above.
+\item When the input is consumed, set the input to the PACs on the level above and spawn this same procedure from Step 2. If there is no higher level, record the single chunk as the root chunk and use its address as a reference to the entire file.
+\end{enumerate}
 
 
 
 \section{Levels of security and the number of parities}\label{sec:levels}
 
 With packed address chunks set as the scope of erasure codes, it is crucial that, in order to achieve the desired robustness, we use the right number of data shards and parities among the children of an intermediate node.
-Given assumptions about chunk retrieval error rates and the number of parities used, one can calculate, the degree of certainty that the data can be recovered without error. One can even apply the same logic backwards: given some level of certainty with which we want recovery to be error-free, we can compute how many parities should be used.
+Given assumptions about chunk retrieval error rates and the number of parities used, one can calculate the degree of certainty that the data can be recovered without error. One can even apply the same logic backwards: given some level of certainty with which we want recovery to be error-free, we can compute how many parities should be used.
 In what follows, we give a formal exposition of how to find these parity counts.
 
 
 Let there be $m$ original chunks and $k$ parity chunks, such that any $m$ chunks out of the total $n = m + k$ ones are fully recoverable after the loss of any $k$ of them. In the process of retrieving the $n$ chunks, what is the likelihood of overall data corruption, given a per-chunk probability of error $\epsilon$?
 
-By ``overall data corruption'', we mean that more than $k$ chunks are damaged or unavailable in the data retrieval process. We assume that each chunk's probability of error is independent of other chunks. In that case, the problem boils down to the independent drawing of $n$ chunks, each of which undergo a \emph{Bernoulli trial} of being faulty with probability $\epsilon$. The probability of a number of chunks out of $n$ independent Bernoulli trials being faulty is given by the \emph{binomial distribution}:
+By ``overall data corruption'', we mean that more than $k$ chunks are damaged or unavailable in the data retrieval process. We assume that each chunk's probability of error is independent of other chunks.%
+%
+\footnote{This makes sense as chunks are distributed across the network according to their content hashes. With the hash function being uniform, chunks are expected to land in neighbourhoods evenly and network failures will not affect any specific cluster of chunks more likely than others.}
+In that case, the problem boils down to the independent drawing of $n$ chunks, each of which undergo a \emph{Bernoulli trial} of being faulty with probability $\epsilon$. The probability of a number of chunks out of $n$ independent Bernoulli trials being faulty is given by the \emph{binomial distribution}:
 \begin{equation}
   B(i, n, \epsilon) = \binom{n}{i} \epsilon^i (1-\epsilon)^{n-i} .
   \label{eq-PMF-binomial}
@@ -430,7 +436,7 @@ This is the formula yielding the minimum number of required parities to keep the
 \begin{figure}[!ht]
   \centering
   \includegraphics[width=.7\textwidth]{figs/fig-alpha-1.pdf}
-  \caption{The point at $k=17$ along the binomial distribution, where the probability of exceeding this many errors becomes less than $\alpha = 10\%$. This cumulated probability is the area under the curve right of $x=17$. For this example, the total number of chunks is $n = 128$, and the per-chunk error rate assumed is $\epsilon = 0.1$.}
+  \Description[]{}\caption{The point at $k=17$ along the binomial distribution, where the probability of exceeding this many errors becomes less than $\alpha = 10\%$. This cumulated probability is the area under the curve right of $x=17$. For this example, the total number of chunks is $n = 128$, and the per-chunk error rate assumed is $\epsilon = 0.1$.}
   \label{fig:alpha}
 \end{figure}
 
@@ -438,7 +444,7 @@ Figure \ref{fig:perr-lin} presents the number of parities needed as a function o
 \begin{figure}[!ht]
   \centering
   \includegraphics[width=.85\textwidth]{figs/fig-perr-lin-1.1.4-flat-crop.pdf}
-  \caption{The number of parities needed (ordinate) as a function of the per-chunk error rate $\epsilon$ (abscissa), for keeping the probability of overall data corruption below given limits (colours) and for $n = 64$ chunks (left panel) and $n = 128$ chunks (right panel).}
+  \Description[]{}\caption{The number of parities needed (ordinate) as a function of the per-chunk error rate $\epsilon$ (abscissa), for keeping the probability of overall data corruption below given limits (colours) and for $n = 64$ chunks (left panel) and $n = 128$ chunks (right panel).}
   \label{fig:perr-lin}
 \end{figure}
 Figure \ref{fig:integrity}  
@@ -446,7 +452,7 @@ presents the number of parities needed to keep the probability of overall data c
 \begin{figure}[!ht]
   \centering
   \includegraphics[width=.7\textwidth]{figs/fig-integrity-1.pdf}
-  \caption{The number of parities required (ordinate) to keep the probability of overall data corruption at a given level (abscissa), for various values of the per-chunk error rate $\epsilon$ (colours) and for $n = 64$ chunks (left panel) and $n = 128$ chunks (right panel).}
+  \Description[]{}\caption{The number of parities required (ordinate) to keep the probability of overall data corruption at a given level (abscissa), for various values of the per-chunk error rate $\epsilon$ (colours) and for $n = 64$ chunks (left panel) and $n = 128$ chunks (right panel).}
   \label{fig:integrity}
 \end{figure}
 
@@ -458,18 +464,18 @@ The same type of problem can also be phrased slightly differently: given a numbe
 While this equation has no closed-form solution for $k$, one can easily find the $k$ satisfying it as long as $k$ is bounded in a relatively small range. In our case, the maximum number of chunks, $n + k$, is 128, and so $k$ is at most $128-n$. This makes it simple to find the value of $k$ compatible with Equation~\ref{eq-quantile-sol}. The numbers of parities in Tables~\ref{tbl:levels}-\ref{tbl:paranoid} were obtained using this method.
 
 In principle, the exact parity counts can be made user-configurable. However, to make non-local redundancy a transparent and easy-to-use feature, we opted for a simplified yet intuitive interface.
-First of all, we set our maximum tolerated error rate of integrity at $10^{-6}$, in other words our security constant expressing our certainty at 6 nines, 99.9999\%.
+First of all, we set our maximum tolerated error rate of integrity at $10^{-6}$, in other words our security constant expressing our certainty at 6 nines, i.e. 99.9999\%.
 Second, we propose to use a handful of named security levels of (non-local) redundancy which correspond to assumptions about the maximum error rates of individual chunk retrievals expressed as discrete percentages. 
 Table~\ref{tbl:levels} lists the security levels with the  corresponding assumption about the maximum error rate of chunk retrieval. 
 %
 \begin{table}[!ht]
 \centering
-\caption{Security levels for non-local redundancy UI and corresponding assumptions about uniform and independent error rates of individual chunk retrieval. In subsequent columns we specify the composition of full chunks for the security levels for unencrypted (columns 4 and 5) and encrypted (columns 6 and 7) content.}
+\Description[]{}\caption{Security levels for non-local redundancy UI and corresponding assumptions about uniform and independent error rates of individual chunk retrieval. In subsequent columns we specify the composition of full chunks for the security levels for unencrypted (columns 4 and 5) and encrypted (columns 6 and 7) content.}
 %
 \begin{tabular}{|c|c|r||r|r|r|r|}
 \hline
 \multicolumn{2}{|c|}{security}
-&\multirow{2}{3.3cm}{\centering error rate\\of chunk retrieval}
+&\multirow{2}{3.3cm}{\centering tolerable error rate\\of chunk retrieval}
 &\multicolumn{2}{|c|}{unencrypted}
 &\multicolumn{2}{|c|}{encrypted}\\\cline{1-2}\cline{4-7}
 level&name&
@@ -489,14 +495,14 @@ level&name&
 % \section{Incomplete chunks and parity counts}
 If the number of file chunks is not a multiple of $m$, it is not possible to proceed with the last batch in the same way as the others. We propose that we encode the remaining chunks with an erasure code that guarantees at least the same level of security as the others.%
 %
-\footnote{Note that this is not as simple as choosing the same redundancy. For example, a $50\text{-out-of-}100$ encoding is much more secure against loss than a $1\text{-out-of-}2$ encoding, even though the redundancy is $100\%$ in both cases.}
+\footnote{Note that this is not the same as choosing the same redundancy. For example, a $50\text{-out-of-}100$ encoding is much more secure against loss than a $1\text{-out-of-}2$ encoding, even though the redundancy is $100\%$ in both cases.}
 %
 Overcompensating, we still require the same number of parity chunks even when there are fewer than $m$ data chunks. However, we can also just calculate the necessary parities for all possible incomplete chunks and security levels. Figure~\ref{fig:maintain} plots the number of parities against the number of chunks required.
 %
 \begin{figure}[!ht]
   \centering
   \includegraphics[width=.8\textwidth]{figs/fig-maintain-1.pdf}
-  \caption{Number of chunks (abscissa) and the corresponding required number of parities (ordinate) such that will maintain the same overall probability of no data corruption as would be the case with 128 chunks, an original number of parities indicated by the colours, and a likelihood $\epsilon$ of an erroneous retrieval of a single chunk indicated in the panel headers.}
+  \Description[]{}\caption{Number of chunks (abscissa) and the corresponding required number of parities (ordinate) such that will maintain the same overall probability of no data corruption as would be the case with 128 chunks, an original number of parities indicated by the colours, and a likelihood $\epsilon$ of an erroneous retrieval of a single chunk indicated in the panel headers.}
   \label{fig:maintain}
 \end{figure}
 
@@ -508,7 +514,7 @@ used is obtained as twice the number of chunks plus the number of parities. Sinc
 %
 \begin{table}[!ht]
 \centering
-\caption{The number of parities (first column in each table) to be appended to a given number of chunks (second and third column of each table, given as a range) so that the probability of an unsuccessful data retrieval remains below $\alpha = 10^{-6}$. The second column is for unencrypted  chunks, while the third one is for encrypted chunks. The tables are for security levels 1-3, to be continued for security level 4 in Table~\ref{tbl:paranoid}.}
+\Description[]{}\caption{The number of parities (first column in each table) to be appended to a given number of chunks (second and third column of each table, given as a range) so that the probability of an unsuccessful data retrieval remains below $\alpha = 10^{-6}$. The second column is for unencrypted  chunks, while the third one is for encrypted chunks. The tables are for security levels 1-3, continued for security level 4 in Table~\ref{tbl:paranoid}.}
 \begin{minipage}{.49\linewidth}
 \begin{tabular}{|r|r|r|}
 \multicolumn{3}{c}{\textsc{medium}}\\\hline
@@ -598,7 +604,7 @@ used is obtained as twice the number of chunks plus the number of parities. Sinc
 
 
 \begin{table}[!ht]
-\caption{As Table~\ref{tbl:parities}, but for the \textsc{paranoid} security level.}
+\Description[]{}\caption{As Table~\ref{tbl:parities}, but for the \textsc{paranoid} security level.}
 \begin{minipage}{.49\linewidth}
 \centering
 \begin{tabular}{|r|r|r|}
@@ -666,9 +672,9 @@ used is obtained as twice the number of chunks plus the number of parities. Sinc
 \label{tbl:paranoid}
 \end{table}
 
-As a final note, one should keep in mind that the probability of a failed data retrieval, $\alpha = 10^{-6}$, is not the same as the probability of a failed file retrieval. This is because $\alpha$ is only valid for one 128-chunk segment (64-chunk segment for encrypted content) of a file, not a file as a whole in general. Assuming that retrieval errors may occur independently to any chunk, we can use $\alpha$ and the size of a file to calculate the probability that a file as a whole is successfully retrieved. This probability is $1 - \alpha$ for each 128-chunk segment of a file, so if a file consists of $s$ 128-chunk segments, then the probability is $(1-\alpha)^s$. In terms of bytes: a file of $g$ bytes consists of $g / 2^{12}$ chunks (because $2^{12}$ bytes is 4KB), which then make up for $s = g / (2^{12} \cdot 2^{7})$ 128-chunk segments (because $128 = 2^7$). This means that the probability $P_F$ of a successful file retrieval is
+As a final note, one should keep in mind that the probability of a failed data retrieval for one PAC, $\alpha = 10^{-6}$, is not the same as the probability of a failed retrieval of a whole file. This is because $\alpha$ is only valid for one 128-chunk segment (64-chunk segment for encrypted content) of a file, not a file as a whole in general. Assuming that retrieval errors may occur independently to any chunk, we can use $\alpha$ and the size of a file to calculate the probability that a file as a whole is successfully retrieved. This probability is $1 - \alpha$ for each 128-chunk segment of a file, so if a file consists of $s$ 128-chunk segments, then the probability is $(1-\alpha)^s$. In terms of bytes: a file of $g$ bytes consists of $g / 2^{12}$ chunks (because $2^{12}$ bytes is 4KB), which then make up for $s = g / (2^{12} \cdot 2^{7})$ 128-chunk segments (because $128 = 2^7$). This means that the probability $P_F$ of a successful file retrieval is
 \begin{equation}
-  P_F = (1 - \alpha)^{g/2^{19}} ,
+  P_F = (1 - \alpha)^{g2^{-19}} ,
   \label{eq-P-file}
 \end{equation}
 an exponentially decreasing function of the file size $g$. For example, a file of 1GB ($g = 2^{30}$ bytes) with $\alpha = 10^{-6}$ has $P_F = (1 - 10^{-6})^{2^{11}} = 0.998$, for a failure probability of $1 - P_F = 0.2\%$.
@@ -687,11 +693,12 @@ Our solution is to use a special Swarm construct, the \emph{single owner chunk} 
 \begin{figure}[!ht]
   \centering
   \includegraphics[width=\textwidth]{figs/single-owner-chunk.pdf}
-  \caption{Single owner chunk (SOC). Unlike content-addressed chunks, SOCs obtain their integrity through the signature of their (single) owner and cross-owner immutability through hashing the owner's address in the chunk address (effectively achieving access control via namespacing).}
+  \Description[]{}\caption{Single owner chunk (SOC). Unlike content-addressed chunks, SOCs obtain their integrity through the signature of their (single) owner and cross-owner immutability through hashing the owner's address in the chunk address (effectively achieving access control via namespacing).}
    \label{fig:soc}
-  \end{figure}
+\Description[]{}
+\end{figure}
 
-The address of a SOC is by its definition the hash of its ID and the Ethereum address of its owner. In order to create valid SOCs, uploaders need to sign the SOC with the owner's identity. Therefore the owner of the SOC must be a consensual identity with their private key publicly revealed, for the system to be able to create SOC-based replicas.
+The address of a SOC is by its definition the hash of its arbitrary ID and the Ethereum address of its owner. In order to create valid SOCs, uploaders need to sign the SOC with the owner's identity. Therefore the owner of the SOC must be a consensual identity with their private key publicly revealed, for the system to be able to create SOC-based replicas.%
 %
 \footnote{This has the added benefit that third parties can also upload replicas of any chunk.}
 
@@ -712,15 +719,15 @@ and hashing the result using the Keccak256 base hash $a_i=H(id\concat o)$, and r
   \item Calculate the bin that $a_i$ belongs to by taking the $k$-bit prefix as big-endian binary number $j<2^k$.
   \item If $\rho\idx{j}$ is unassigned, then let $\rho\idx{j}:=c_i$ and increment $C$.
   \item If $C=2^k$, then quit.
-  \item Increment $i$ by one, if $i=2^n$, then quit.
+  \item Increment $i$ by one; if $i=2^n$, then quit.
   \item Repeat from Step 1.
 \end{enumerate}
 
-With this solution, we are able to provide an arbitrary level of redundancy for the storage also of data smaller or equal to a chunk's size (4K). As the previous schema scales indefinitely, we now have a combined mechanism for all data sizes.
+With this solution, we are able to provide an arbitrary level of redundancy for the storage also of data smaller or equal to a chunk's size (4K). As this schema scales indefinitely, we now have a combined mechanism for all data sizes.%
 %
 %
-\footnote{Note that if $n$ is small, then generating all $2^k$ balanced replicas may not be achievable, and if $n<k$, this is certainly not possible.
-In general, given $n, k$ at least $m$ miss has a probability of $(1 - m/2^k)^{2^n}$.}
+\footnote{Note that if $n$ is small, then generating all $2^k$ balanced replicas may not be achievable, and if $n<k$, it is impossible.
+In general, given $n, k$, at least $m$ misses has a probability of $(1 - m/2^k)^{2^n}$.}
 
 Depending on the strategy, the downloader can choose which  address to retrieve the chunk from. The obvious choice is the replica closest to the requesting node's overlay address $a_r$. In other words, the last item of the sorted chunk array $\rho$ using the comparison function:
 \begin{equation}
@@ -734,9 +741,8 @@ Depending on the strategy, the downloader can choose which  address to retrieve 
 
 % \section{The special case of a single chunk} \label{sec:the-special-case-of-a-single-chunk}
 
-If the probability of any replica unavailable is $\epsilon$, then, assuming independence, the probability that $n$ parities are faulty is $\epsilon^n$. Here we can write $n = k + 1$; that is, we have one ``original'' chunk and the rest of them are the $k$ parities. Keeping the overall error probability below $\alpha$ then means that
+If the probability of any replica to become unavailable is $\epsilon$, then, assuming independence, the probability that $n$ parities are faulty is $\epsilon^n$. Here we can write $n = k + 1$; that is, we have one ``original'' chunk and the rest of them are the $k$ parities. Keeping the overall error probability below $\alpha$ then means that
 \begin{equation}
-%%%%%%%%%%%%%%%%%%%%
   \epsilon^{k+1} = \alpha
   \label{eq-onechunk}
 \end{equation}
@@ -751,10 +757,10 @@ This is the number of parities of a singleton chunk required to keep the overall
   \label{eq-onechunk-special}
 \end{equation}
 For example, if the per-chunk error rate is ten percent ($\epsilon = 0.1$), then $|\log_{10}(\epsilon)| = |\log_{10}(1/10)| = 1$, and so $k = 6/1 - 1 = 5$ parities are needed. If instead the per-chunk error rate is just one percent ($\epsilon = 0.01$), then only $k = 6/2 - 1 = 2$ parities are necessary.
-The number of replicas required are shown in Table~\ref{tbl:single-chunk}for the same per-chunk error rates as in Table~\ref{tbl:levels}.
+The number of replicas required are shown in Table~\ref{tbl:single-chunk} for the same per-chunk error rates as in Table~\ref{tbl:levels}.
 %
 \begin{table}[!ht]
-\caption{For a given per-chunk error rate (first column), how many parities (second column) are required of a single chunk to keep the overall data corruption probability below $\alpha = 10^{-6}$?}
+\Description[]{}\caption{For a given per-chunk error rate (first column), how many parities (second column) are required of a single chunk to keep the overall data corruption probability below $\alpha = 10^{-6}$?}
 \begin{center}
 \begin{tabular}{|l|r|r|r|}
 \hline
@@ -824,7 +830,7 @@ Similarly, given a typical model of network latencies for chunk retrieval, erasu
 
 \section{Conclusion}\label{sec:conclusion}
 
-This work presents a comprehensive strategy for enhancing data availability in decentralised storage by embedding erasure coding directly into the Swarm chunk tree. By employing Reed–Solomon encoding at the level of packed address chunks, the system achieves non-local redundancy without compromising the deterministic structure of content addressing. The construction allows for user-configurable security levels, defined by quantifiable probabilities of successful retrieval, and supports efficient decoding even under partial network failure. For edge cases involving singleton chunks, the introduction of dispersed replicas ensures resilience through address-space diversification. Furthermore, a spectrum of retrieval strategies is proposed to balance cost, latency, and robustness depending on application needs. Together, these mechanisms form a robust foundation for scalable, fault-tolerant storage in unreliable or adversarial environments.
+This work presents a comprehensive strategy for enhancing data availability in decentralised storage by embedding erasure coding directly into the Swarm chunk tree. By employing Reed–Solomon encoding at the level of packed address chunks, the system achieves non-local redundancy without compromising the deterministic structure of content addressing. The construction allows for user-configurable security levels, defined by quantifiable probabilities of successful retrieval, and supports efficient decoding even under partial network failure. For edge cases involving singleton chunks, the introduction of dispersed replicas ensures resilience through address-space diversification. Furthermore, a spectrum of retrieval strategies is proposed to balance cost, latency, and robustness depending on application needs. Together, these mechanisms form a robust foundation for scalable, fault-tolerant, access-optimized storage in unreliable or adversarial environments.
 
 %%
 %% The acknowledgments section is defined using the "acks" environment
